@@ -15,6 +15,17 @@ class RepoLib:
 		self._pathLib = pathLib.PathLib(self._argLib)
 		self._gapi = None
 
+	def repoVersion(self):
+		print('Print the version of the repository on the drive')
+
+		repoFileName = self._pathLib.getBundleFileName()
+
+		# Try to retrieve the given repostory from the google drive store
+		repoMetadata = self.getGoogleApi().getRepo(repoFileName)
+
+		# Print the info
+		print("Current version on drive (" + self.printMetadata(repoMetadata) + ")")
+
 	def sync(self):
 		print('Sync local repository from google drive')
 
@@ -43,6 +54,7 @@ class RepoLib:
 		print('Push local repository changes to google drive')
 
 		gitRepoFolder = self._argLib.getGitRepoFolder()
+		repoFileName = self._pathLib.getBundleFileName()
 		bundleFilePath = self._pathLib.getBundleFilePath()
 
 		# Try to sync the local bundle file
@@ -73,13 +85,17 @@ class RepoLib:
 		# Upload the new version
 		metadata = self.getGoogleApi().updateRepo(bundleFilePath, metadata[google.F_ID])
 
-		# Update the metadata
-		self.updateBundleMetadata(metadata, pushed_head)
-		print('Local metadata updated')
-
+		# Delete older versions
 		print('Deleting older drive revisions ...')
 		self.getGoogleApi().deleteAllRevisionButHead(metadata)
 		print('Older drive revisions deleted')
+
+		# Download again the bundle metadata, since the version number may be updated
+		metadata = gBundleFile = self.getGoogleApi().getRepo(repoFileName)
+
+		# Update the metadata
+		self.updateBundleMetadata(metadata, pushed_head)
+		print('Local metadata updated')
 
 		print('Pushing to drive complete')
 
@@ -191,8 +207,6 @@ class RepoLib:
 		# Delete existing metadata file
 		if os.path.exists(repoMetadataPath):
 			os.remove(repoMetadataPath)
-
-
 
 		# Create json file
 		metadata = {
