@@ -168,15 +168,21 @@ class RepoLib:
 				raise Exception("The repository with name '" + repoFileName +
 					"' found on drive doesn't match the ID of the locally stored metadata")
 
+			# Parse the versions
+			localVersion = int(metadata[google.F_VERSION])
+			driveVersion = int(gBundleFile[google.F_VERSION])
+
 			# If the repository matched the locally stored id, check if a new version is available
-			if gBundleFile[google.F_VERSION] > metadata[google.F_VERSION]:
+			if driveVersion > localVersion:
 				# Download the new version
 				print("An old version is saved on disk (" +
-					metadata[google.F_VERSION] + "<" + gBundleFile[google.F_VERSION] +
+					str(localVersion) + "<" + str(driveVersion) +
 					"). Download the new version ...")
 				self.downloadBundle(gBundleFile)
 			else:
-				print("The local repository is up to date")
+				print("The local repository is up to date. Current version (" +
+					str(localVersion) + "), Drive version (" +
+					str(driveVersion) + ")")
 		else:
 			# Download the current drive version on disk
 			print("No local repository available on disk. Start download ...")
