@@ -1,32 +1,21 @@
 from __future__ import print_function
-import httplib2
+import pickle
 import os
 import cgi
 
-from apiclient import discovery
-from apiclient import errors
-from apiclient.http import MediaFileUpload
-from apiclient.http import MediaIoBaseDownload
-from oauth2client import client
-from oauth2client import tools
-from oauth2client.file import Storage
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 from core import args
 from core import utilities
 
-try:
-	import argparse
-	args.Arguments.addArguments(tools.argparser)
-	flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-	flags = None
-
 # If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/drive-python-quickstart.json
+# at ~/.credentials/token.pickle
 # SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly'
 SCOPES = 'https://www.googleapis.com/auth/drive.file'
-CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Drive API Python Quickstart'
 REPO_FOLDER_NAME = 'Repositories'
 
 F_ID = 'id'
@@ -74,46 +63,42 @@ class GoogleServiceApi:
 		Returns:
 			Credentials, the obtained credential.
 		"""
+		creds = None
 		home_dir = os.path.expanduser('~')
 		credential_dir = os.path.join(home_dir, '.credentials')
 		if not os.path.exists(credential_dir):
 			os.makedirs(credential_dir)
-		credential_path = os.path.join(credential_dir, 'repoSync.json')
+		# The file token.pickle stores the user's access and refresh tokens, and is
+		# created automatically when the authorization flow completes for the first
+		# time.
+		token_path = os.path.join(credential_dir, 'token.pickle')
+		if os.path.exists(token_path):
+			with open(token_path, 'rb') as token:
+				creds = pickle.load(token)
+		# If there are no (valid) credentials available, let the user log in.
+		if not creds or not creds.valid:
+			if creds and creds.expired and creds.refresh_token:
+				creds.refresh(Request())
+			else:
+				credentials_path = os.path.join(credential_dir, 'credentials.json')
+				if not os.path.exists(credentials_path):
+					raise Exception("No credentials.json file found in credentials directory")
+				flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
+				creds = flow.run_local_server(port=0)
 
-		print('Looking for stored credentials ...')
-		store = Storage(credential_path)
-		credentials = store.get()
-		if not credentials or credentials.invalid:
-			print('Credentials not valid or null. Begin authorization process ...')
-			credentials = self.createCredentials(store)
-			print('Authentication succeded, storing credentials to ' + credential_path)
-		else:
-			print('Credentials found')
-			if flags.resetCredentials:
-				print('Reset existing credentials ...')
-				os.remove(credential_path)
-				print('Existing credentials removed, begin authentication process ...')
-				credentials = self.createCredentials(store)
-				print('Authentication succeded, storing credentials to ' + credential_path)
+			# Save the credentials for the next run
+			with open(token_path, 'wb') as token:
+				pickle.dump(creds, token)
 
-		return credentials
-
-	def createCredentials(self, store):
-		flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
-		flow.user_agent = APPLICATION_NAME
-		if flags:
-			return tools.run_flow(flow, store, flags)
-		else: # Needed only for compatibility with Python 2.6
-			return tools.run_flow(flow, store)
+		return creds
 
 	def getService(self):
 		print('Getting Google Api Service ...')
 
 		if self._service is None:
 			print('Service not yet initialized. Initializing ...')
-			credentials = self.getCredentials()
-			http = credentials.authorize(httplib2.Http())
-			self._service = discovery.build('drive', 'v3', http=http)
+			creds = self.getCredentials()
+			self._service = build('drive', 'v3', credentials=creds)
 			print('Service initialized')
 		return self._service
 
@@ -164,7 +149,7 @@ class GoogleServiceApi:
 		body = {
 			F_NAME: folderName,
 			F_MIME_TYPE: 'application/vnd.google-apps.folder'
-        }
+		}
 		if parentID:
 			body[F_PARENT] = [{F_ID: parentID}]
 		root_folder = self.getService().files().create(body = body).execute()

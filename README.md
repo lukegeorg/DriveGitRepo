@@ -46,7 +46,7 @@ Requires the repository initialized on google drive.
 
 1. Run the set up script ```install/set_up_win.bat```
 
-1. Create the file ```client_secret.json``` following the instruction at <https://developers.google.com/drive/v3/web/quickstart/python> and copy the file on the root folder
+2. Create the file ```credentials.json``` following the instruction at <https://developers.google.com/drive/v3/web/quickstart/python> and copy the file to ```%userprofile%\.credentials\```
 
 ### Linux
 
@@ -54,4 +54,4 @@ Requires the repository initialized on google drive.
 
 1. Run the set up script ```install/set_up_linux.sh```
 
-1. Create the file ```client_secret.json``` following the instruction at <https://developers.google.com/drive/v3/web/quickstart/python> and copy the file on the root folder
+2. Create the file ```credentials.json``` following the instruction at <https://developers.google.com/drive/v3/web/quickstart/python> and copy the file to ```~/.credentials/```
